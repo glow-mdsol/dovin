@@ -38,7 +38,7 @@ main.go
 └── blocks on systray.Run()
 
 store/        — SQLite queries (tasks, recurrences, config)
-api/          — HTTP handlers: /tasks, /tasks/{id}, /tasks/{id}/status, /recurrences
+api/          — HTTP handlers: /tasks, /tasks/{id}, /tasks/{id}/status, /tasks/{id}/promote, /recurrences
 scheduler/    — promotes due recurring tasks to todo
 ui/           — embedded static assets (index.html, app.js, style.css)
 ```
@@ -55,10 +55,11 @@ The webview loads `http://localhost:{port}` on open. The frontend is a single-pa
 |---|---|---|
 | id | INTEGER PK | |
 | title | TEXT | e.g. "GitHub admin" |
-| status | TEXT | `todo` \| `in_progress` \| `blocked` \| `done` \| `archived` |
-| priority | INTEGER | `1` (high) \| `2` (medium) \| `3` (low), default 2 |
-| notes | TEXT | optional free text |
-| recurrence_id | INTEGER FK | null for one-off tasks |
+| status | TEXT | `todo` \| `in_progress` \| `blocked` \| `done` \| `archived` (top-level); `todo` \| `done` (subtasks) |
+| priority | INTEGER | `1` (high) \| `2` (medium) \| `3` (low), default 2; null for subtasks |
+| notes | TEXT | optional free text; null for subtasks |
+| parent_id | INTEGER FK | null for top-level tasks; references `tasks.id` (max one level — app enforces no subtask can itself be a parent) |
+| recurrence_id | INTEGER FK | null for subtasks and one-off tasks |
 | created_at | DATETIME | |
 | updated_at | DATETIME | |
 
@@ -135,15 +136,20 @@ Single floating webview panel (~420×600px), positioned below the menu bar icon.
 
 - Tasks are grouped by status: **In Progress** → **Todo** → **Blocked**
 - Within each group, tasks are sorted by priority (high → medium → low), then by `created_at`
-- Each task row shows a priority indicator (e.g. coloured dot or label: red/amber/grey)
-- Each task row: click to expand detail/edit panel inline
+- Each task row shows a priority indicator (e.g. coloured dot: red/amber/grey)
+- Tasks with subtasks show a progress chip e.g. `2/4` inline; completing all subtasks does not auto-close the parent
+- Each task row: click to expand detail/edit panel inline, which shows the subtask list
+- Subtasks are shown as a simple checklist (title + checkbox); checking marks status `done`
+- Subtasks can be promoted to top-level tasks via a context action ("Promote to task") — sets `parent_id` to null, assigns priority medium
 - Status and priority can be changed via dropdowns on the task row
 - Archive view accessible via a toggle at the top (hidden by default)
 - Closing the window (×) hides it; does not quit the app
 
 ### Add Task form (inline, expands at bottom)
 
-Fields: title (required), priority (high/medium/low, default medium), notes (optional), recurrence schedule (optional cron or human-readable picker: daily / weekly / monthly / custom).
+**Top-level task fields:** title (required), priority (high/medium/low, default medium), notes (optional), recurrence schedule (optional cron or human-readable picker: daily / weekly / monthly / custom).
+
+**Subtask fields:** title only. Added inline within the parent task's expanded detail panel.
 
 ---
 
