@@ -65,10 +65,10 @@ func main() {
 			for {
 				select {
 				case <-mOpen.ClickedCh:
-					openWebview(port, "")
+					runOnMain(func() { openWebview(port, "") })
 					updateBadge(s)
 				case <-mAdd.ClickedCh:
-					openWebview(port, "#add")
+					runOnMain(func() { openWebview(port, "#add") })
 					updateBadge(s)
 				case <-mQuit.ClickedCh:
 					close(done)
