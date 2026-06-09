@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -12,14 +11,13 @@ import (
 	"github.com/glow-mdsol/dovin/scheduler"
 	"github.com/glow-mdsol/dovin/store"
 	"github.com/glow-mdsol/dovin/ui"
-	"github.com/webview/webview_go"
 )
 
 //go:embed assets/icon.png
 var iconData []byte
 
 func main() {
-	logFile := fmt.Sprintf("%s/Library/Logs/dovin.log", os.Getenv("HOME"))
+	logFile := os.Getenv("HOME") + "/Library/Logs/dovin.log"
 	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err == nil {
 		log.SetOutput(f)
@@ -65,10 +63,10 @@ func main() {
 			for {
 				select {
 				case <-mOpen.ClickedCh:
-					runOnMain(func() { openWebview(port, "") })
+					openWebview(port, "")
 					updateBadge(s)
 				case <-mAdd.ClickedCh:
-					runOnMain(func() { openWebview(port, "#add") })
+					openWebview(port, "#add")
 					updateBadge(s)
 				case <-mQuit.ClickedCh:
 					close(done)
@@ -77,16 +75,6 @@ func main() {
 			}
 		}()
 	}, func() {})
-}
-
-func openWebview(port int, fragment string) {
-	w := webview.New(false)
-	defer w.Destroy()
-	w.SetTitle("Dovin")
-	w.SetSize(420, 600, webview.HintFixed)
-	url := fmt.Sprintf("http://localhost:%d/%s", port, fragment)
-	w.Navigate(url)
-	w.Run()
 }
 
 func updateBadge(s *store.Store) {
