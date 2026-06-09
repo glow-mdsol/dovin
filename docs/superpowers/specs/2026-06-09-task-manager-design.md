@@ -17,9 +17,9 @@ Dovin is a personal task manager that runs as a macOS menu bar app. It is always
 |---|---|
 | Language | Go |
 | Menu bar | `fyne.io/systray` |
-| UI popup | `github.com/webview/webview` (embedded webview ~420×600px) |
+| UI popup | `github.com/webview/webview` (embedded webview ~420×600px, uses CGo/WKWebView on macOS) |
 | Local API | `net/http` (Go stdlib, loopback only) |
-| Database | SQLite via `modernc.org/sqlite` (pure Go, no CGo) |
+| Database | SQLite via `modernc.org/sqlite` (pure Go, no CGo required) |
 | Frontend | Embedded HTML/CSS/JS via `embed.FS` |
 | Startup | launchd plist (`~/Library/LaunchAgents/com.glow.dovin.plist`) |
 
@@ -32,7 +32,7 @@ main.go
 ├── starts HTTP server (loopback, random port stored in SQLite config)
 ├── registers systray icon + menu
 │   ├── "Open" → opens webview popup
-│   ├── "Add Task…" → native text input dialog → POST /tasks
+│   ├── "Add Task…" → opens webview with add form pre-focused
 │   └── "Quit"
 ├── launches scheduler goroutine (ticks every minute)
 └── blocks on systray.Run()
