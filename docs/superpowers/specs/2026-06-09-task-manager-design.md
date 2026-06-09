@@ -38,7 +38,7 @@ main.go
 └── blocks on systray.Run()
 
 store/        — SQLite queries (tasks, recurrences, config)
-api/          — HTTP handlers: /tasks, /tasks/{id}, /tasks/{id}/status, /tasks/{id}/promote, /recurrences
+api/          — HTTP handlers: /tasks, /tasks/{id}, /tasks/{id}/status, /tasks/{id}/promote, /tasks/{id}/notes, /recurrences
 scheduler/    — promotes due recurring tasks to todo
 ui/           — embedded static assets (index.html, app.js, style.css)
 ```
@@ -57,7 +57,7 @@ The webview loads `http://localhost:{port}` on open. The frontend is a single-pa
 | title | TEXT | e.g. "GitHub admin" |
 | status | TEXT | `todo` \| `in_progress` \| `blocked` \| `done` \| `archived` (top-level); `todo` \| `done` (subtasks) |
 | priority | INTEGER | `1` (high) \| `2` (medium) \| `3` (low), default 2; null for subtasks |
-| notes | TEXT | optional free text; null for subtasks |
+| notes_path | TEXT | filename relative to `~/.config/dovin/notes/` e.g. `42-github-admin.md`; null if no file; top-level tasks only |
 | parent_id | INTEGER FK | null for top-level tasks; references `tasks.id` (max one level — app enforces no subtask can itself be a parent) |
 | recurrence_id | INTEGER FK | null for subtasks and one-off tasks |
 | created_at | DATETIME | |
@@ -152,6 +152,16 @@ Single floating webview panel (~420×600px), positioned below the menu bar icon.
 **Subtask fields:** title only. Added inline within the parent task's expanded detail panel.
 
 ---
+
+## Notes Files
+
+- Notes directory: `~/.config/dovin/notes/` (created on first use)
+- Filename: `{id}-{slugified-title}.md` e.g. `42-github-admin.md` — stored in `notes_path`
+- File is created lazily: only when the user clicks "Open notes" for the first time
+- Opens via `$EDITOR` env var; falls back to `open` (macOS default app for `.md`)
+- UI: tasks with a notes file show a small document icon on the row
+- Files are **never deleted automatically** — archiving or deleting a task leaves the file intact
+- Subtasks do not have notes files
 
 ## Menu Bar Icon
 
