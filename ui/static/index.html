@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dovin</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="header">
+    <h1>Dovin</h1>
+    <button id="archive-toggle" onclick="toggleArchive()">Archive</button>
+  </div>
+  <div id="task-list"></div>
+  <div id="footer">
+    <button id="add-trigger" onclick="showAddForm()">+ Add Task</button>
+    <form id="add-form" class="hidden" onsubmit="submitTask(event)">
+      <input id="add-title" type="text" placeholder="Task title…" autocomplete="off" required>
+      <div class="form-row">
+        <select id="add-priority">
+          <option value="1">High</option>
+          <option value="2" selected>Medium</option>
+          <option value="3">Low</option>
+        </select>
+        <input type="text" id="add-schedule" placeholder="Recurrence (e.g. 0 9 * * 1)" style="flex:1">
+        <button type="submit" class="btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
