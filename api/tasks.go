@@ -241,10 +241,3 @@ func (s *Server) handleTaskPriority(w http.ResponseWriter, r *http.Request, id i
 	writeJSON(w, 200, toResp(task))
 }
 
-// Stubs — implemented in api/recurrences.go (Task 8)
-func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented")
-}
-func (s *Server) handleRecurrence(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented")
-}
