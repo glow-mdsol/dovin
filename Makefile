@@ -19,11 +19,12 @@ install: build
 	cp $(BIN) $(INSTALL_DIR)/$(BINARY_NAME)
 	@mkdir -p $(HOME)/Library/LaunchAgents
 	@printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>Label</key><string>$(PLIST_NAME)</string>\n  <key>ProgramArguments</key><array><string>$(INSTALL_DIR)/$(BINARY_NAME)</string></array>\n  <key>RunAtLoad</key><true/>\n  <key>KeepAlive</key><true/>\n  <key>StandardOutPath</key><string>$(LOG_PATH)</string>\n  <key>StandardErrorPath</key><string>$(LOG_PATH)</string>\n</dict>\n</plist>\n' > $(PLIST_PATH)
-	launchctl load $(PLIST_PATH)
-	@echo "Dovin installed. It will start on next login, or run: launchctl start $(PLIST_NAME)"
+	-launchctl bootout gui/$(shell id -u) $(PLIST_PATH) 2>/dev/null; true
+	launchctl bootstrap gui/$(shell id -u) $(PLIST_PATH)
+	@echo "Dovin installed and running."
 
 uninstall:
-	-launchctl unload $(PLIST_PATH) 2>/dev/null
+	-launchctl bootout gui/$(shell id -u) $(PLIST_PATH) 2>/dev/null
 	-rm -f $(PLIST_PATH)
 	-rm -f $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "Dovin uninstalled."
