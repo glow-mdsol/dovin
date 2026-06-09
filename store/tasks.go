@@ -43,6 +43,9 @@ func (s *Store) CreateTask(title string, priority int, parentID, recurrenceID sq
 		var grandparent sql.NullInt64
 		err := s.db.QueryRow(`SELECT parent_id FROM tasks WHERE id = ?`, parentID.Int64).Scan(&grandparent)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("parent task %d not found", parentID.Int64)
+			}
 			return nil, fmt.Errorf("check parent: %w", err)
 		}
 		if grandparent.Valid {
@@ -110,8 +113,12 @@ func (s *Store) ListArchivedTasks() ([]Task, error) {
 
 func (s *Store) UpdateStatus(id int64, newStatus string) error {
 	var current string
-	if err := s.db.QueryRow(`SELECT status FROM tasks WHERE id=?`, id).Scan(&current); err != nil {
+	var parentID sql.NullInt64
+	if err := s.db.QueryRow(`SELECT status, parent_id FROM tasks WHERE id=?`, id).Scan(&current, &parentID); err != nil {
 		return fmt.Errorf("get status: %w", err)
+	}
+	if parentID.Valid {
+		return fmt.Errorf("use UpdateSubtaskStatus for subtasks")
 	}
 	if !ValidTransition(current, newStatus) {
 		return fmt.Errorf("invalid transition %s→%s", current, newStatus)
@@ -128,19 +135,33 @@ func (s *Store) UpdateSubtaskStatus(id int64, done bool) error {
 	if done {
 		status = "done"
 	}
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE tasks SET status=?, updated_at=datetime('now') WHERE id=? AND parent_id IS NOT NULL`,
 		status, id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("task %d not found or is not a subtask", id)
+	}
+	return nil
 }
 
 func (s *Store) UpdatePriority(id int64, priority int) error {
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE tasks SET priority=?, updated_at=datetime('now') WHERE id=? AND parent_id IS NULL`,
 		priority, id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("task %d not found or is a subtask", id)
+	}
+	return nil
 }
 
 func (s *Store) SetNotesPath(id int64, path string) error {
@@ -152,11 +173,18 @@ func (s *Store) SetNotesPath(id int64, path string) error {
 }
 
 func (s *Store) PromoteSubtask(id int64) error {
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE tasks SET parent_id=NULL, priority=2, updated_at=datetime('now') WHERE id=? AND parent_id IS NOT NULL`,
 		id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("task %d not found or is not a subtask", id)
+	}
+	return nil
 }
 
 func (s *Store) DeleteTask(id int64) error {
@@ -164,7 +192,7 @@ func (s *Store) DeleteTask(id int64) error {
 	return err
 }
 
-func (s *Store) ActiveTaskCount() (int, error) {
+func (s *Store) PendingTaskCount() (int, error) {
 	var n int
 	err := s.db.QueryRow(
 		`SELECT COUNT(*) FROM tasks WHERE parent_id IS NULL AND status IN ('todo','in_progress')`,
@@ -174,6 +202,13 @@ func (s *Store) ActiveTaskCount() (int, error) {
 
 // helpers
 
+func parseTimestamp(s string) (time.Time, error) {
+	if t, err := time.Parse("2006-01-02 15:04:05", s); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.RFC3339, s)
+}
+
 func (s *Store) scanTask(row *sql.Row) (*Task, error) {
 	var t Task
 	var createdStr, updatedStr string
@@ -182,8 +217,14 @@ func (s *Store) scanTask(row *sql.Row) (*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-	t.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedStr)
+	t.CreatedAt, err = parseTimestamp(createdStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse created_at: %w", err)
+	}
+	t.UpdatedAt, err = parseTimestamp(updatedStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse updated_at: %w", err)
+	}
 	return &t, nil
 }
 
@@ -195,8 +236,14 @@ func (s *Store) scanTaskRow(rows *sql.Rows) (*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-	t.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedStr)
+	t.CreatedAt, err = parseTimestamp(createdStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse created_at: %w", err)
+	}
+	t.UpdatedAt, err = parseTimestamp(updatedStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse updated_at: %w", err)
+	}
 	return &t, nil
 }
 
@@ -221,19 +268,31 @@ func (s *Store) listSubtasks(parentID int64) ([]Task, error) {
 }
 
 func (s *Store) collectTasksWithSubtasks(rows *sql.Rows) ([]Task, error) {
-	var out []Task
+	// Scan all parent rows first, then close, before issuing subtask queries.
+	// This avoids a connection-pool deadlock when MaxOpenConns == 1.
+	var tasks []*Task
 	for rows.Next() {
 		t, err := s.scanTaskRow(rows)
 		if err != nil {
 			return nil, err
 		}
+		tasks = append(tasks, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+
+	out := make([]Task, 0, len(tasks))
+	for _, t := range tasks {
+		var err error
 		t.Subtasks, err = s.listSubtasks(t.ID)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, *t)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func nullableInt(n sql.NullInt64) interface{} {
