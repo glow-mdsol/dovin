@@ -4,14 +4,20 @@ let expandedId = null;
 
 const PRIORITY_LABEL = { 1: 'High', 2: 'Medium', 3: 'Low' };
 const PRIORITY_CLASS = { 1: 'p1', 2: 'p2', 3: 'p3' };
-const STATUS_OPTIONS = ['todo', 'in_progress', 'blocked'];
+const STATUS_OPTIONS = ['todo', 'in_progress', 'blocked', 'done'];
 
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body !== undefined) opts.body = JSON.stringify(body);
   const r = await fetch(path, opts);
   if (r.status === 204) return null;
-  return r.json();
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = data.error || `HTTP ${r.status}`;
+    alert(msg);
+    throw new Error(msg);
+  }
+  return data;
 }
 
 async function loadTasks() {

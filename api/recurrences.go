@@ -8,7 +8,45 @@ import (
 	"time"
 
 	"github.com/glow-mdsol/dovin/scheduler"
+	"github.com/glow-mdsol/dovin/store"
 )
+
+type recurrenceResp struct {
+	ID              int64   `json:"id"`
+	Title           string  `json:"title"`
+	Priority        int     `json:"priority"`
+	Schedule        string  `json:"schedule"`
+	NextDueAt       *string `json:"next_due_at"`
+	LastCompletedAt *string `json:"last_completed_at"`
+	Active          bool    `json:"active"`
+}
+
+func toRecurrenceResp(r *store.Recurrence) recurrenceResp {
+	resp := recurrenceResp{
+		ID:       r.ID,
+		Title:    r.Title,
+		Priority: r.Priority,
+		Schedule: r.Schedule,
+		Active:   r.Active,
+	}
+	if r.NextDueAt.Valid {
+		s := r.NextDueAt.Time.UTC().Format(time.RFC3339)
+		resp.NextDueAt = &s
+	}
+	if r.LastCompletedAt.Valid {
+		s := r.LastCompletedAt.Time.UTC().Format(time.RFC3339)
+		resp.LastCompletedAt = &s
+	}
+	return resp
+}
+
+func toRecurrenceRespSlice(recs []store.Recurrence) []recurrenceResp {
+	out := make([]recurrenceResp, len(recs))
+	for i := range recs {
+		out[i] = toRecurrenceResp(&recs[i])
+	}
+	return out
+}
 
 func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -19,7 +57,7 @@ func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
 			writeError(w, 500, err.Error())
 			return
 		}
-		writeJSON(w, 200, recs)
+		writeJSON(w, 200, toRecurrenceRespSlice(recs))
 	case http.MethodPost:
 		var body struct {
 			Title    string `json:"title"`
@@ -47,7 +85,7 @@ func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
 			writeError(w, 500, err.Error())
 			return
 		}
-		writeJSON(w, 201, rec)
+		writeJSON(w, 201, toRecurrenceResp(rec))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -81,6 +119,10 @@ func (s *Server) handleRecurrence(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
-	rec, _ := s.store.GetRecurrence(id)
-	writeJSON(w, 200, rec)
+	rec, err := s.store.GetRecurrence(id)
+	if err != nil || rec == nil {
+		writeError(w, http.StatusInternalServerError, "could not reload recurrence")
+		return
+	}
+	writeJSON(w, 200, toRecurrenceResp(rec))
 }

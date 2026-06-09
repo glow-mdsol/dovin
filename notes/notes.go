@@ -44,10 +44,12 @@ func EnsureFile(id int64, title string) (string, error) {
 
 func open(path string) error {
 	editor := os.Getenv("EDITOR")
-	if editor != "" {
-		return exec.Command(editor, path).Start()
+	if editor == "" {
+		return exec.Command("open", path).Start()
 	}
-	return exec.Command("open", path).Start()
+	fields := strings.Fields(editor)
+	args := append(fields[1:], path)
+	return exec.Command(fields[0], args...).Start()
 }
 
 var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)

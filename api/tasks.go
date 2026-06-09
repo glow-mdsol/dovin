@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -166,7 +167,9 @@ func (s *Server) handleTaskStatus(w http.ResponseWriter, r *http.Request, id int
 		}
 		// auto-archive on done + update recurrence next_due_at
 		if body.Status == "done" {
-			_ = s.store.UpdateStatus(id, "archived")
+			if err := s.store.UpdateStatus(id, "archived"); err != nil {
+				log.Printf("auto-archive task %d: %v", id, err)
+			}
 			if task.RecurrenceID.Valid {
 				rec, err := s.store.GetRecurrence(task.RecurrenceID.Int64)
 				if err == nil && rec != nil {
@@ -178,7 +181,11 @@ func (s *Server) handleTaskStatus(w http.ResponseWriter, r *http.Request, id int
 			}
 		}
 	}
-	updated, _ := s.store.GetTask(id)
+	updated, err := s.store.GetTask(id)
+	if err != nil || updated == nil {
+		writeError(w, http.StatusInternalServerError, "could not reload task")
+		return
+	}
 	writeJSON(w, 200, toResp(updated))
 }
 
@@ -191,7 +198,11 @@ func (s *Server) handleTaskPromote(w http.ResponseWriter, r *http.Request, id in
 		writeError(w, 500, err.Error())
 		return
 	}
-	task, _ := s.store.GetTask(id)
+	task, err := s.store.GetTask(id)
+	if err != nil || task == nil {
+		writeError(w, http.StatusInternalServerError, "could not reload task")
+		return
+	}
 	writeJSON(w, 200, toResp(task))
 }
 
@@ -237,7 +248,11 @@ func (s *Server) handleTaskPriority(w http.ResponseWriter, r *http.Request, id i
 		writeError(w, 500, err.Error())
 		return
 	}
-	task, _ := s.store.GetTask(id)
+	task, err := s.store.GetTask(id)
+	if err != nil || task == nil {
+		writeError(w, http.StatusInternalServerError, "could not reload task")
+		return
+	}
 	writeJSON(w, 200, toResp(task))
 }
 
