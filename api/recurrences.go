@@ -75,9 +75,15 @@ func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
 		if body.Priority == 0 {
 			body.Priority = 2
 		}
-		firstDue, err := scheduler.NextAfter(body.Schedule, time.Now())
+		cronExpr, err := scheduler.ParseSchedule(body.Schedule)
 		if err != nil {
-			writeError(w, 400, "invalid cron schedule: "+err.Error())
+			writeError(w, 400, err.Error())
+			return
+		}
+		body.Schedule = cronExpr
+		firstDue, err := scheduler.NextAfter(cronExpr, time.Now())
+		if err != nil {
+			writeError(w, 400, "invalid schedule: "+err.Error())
 			return
 		}
 		rec, err := s.store.CreateRecurrence(body.Title, body.Priority, body.Schedule, firstDue)
