@@ -10,12 +10,17 @@ package main
 static NSWindow   *g_window   = nil;
 static WKWebView  *g_webview  = nil;
 
-@interface DovinDelegate : NSObject <NSWindowDelegate>
+@interface DovinDelegate : NSObject <NSWindowDelegate, WKNavigationDelegate>
 @end
 @implementation DovinDelegate
 - (BOOL)windowShouldClose:(NSWindow *)sender {
     [sender orderOut:nil];
     return NO;
+}
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    // Focus the first text input after the page loads so the user can type immediately
+    [webView evaluateJavaScript:@"document.querySelector('input[type=text],input:not([type])')?.focus()"
+              completionHandler:nil];
 }
 @end
 
@@ -42,6 +47,7 @@ void dovin_show(const char *url) {
             g_webview = [[WKWebView alloc]
                 initWithFrame:[[g_window contentView] bounds]
                 configuration:cfg];
+            [g_webview setNavigationDelegate:g_delegate];
             [g_webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
             [[g_window contentView] addSubview:g_webview];
         }
@@ -52,6 +58,7 @@ void dovin_show(const char *url) {
         [NSApp activateIgnoringOtherApps:YES];
         [g_window orderFrontRegardless];
         [g_window makeKeyWindow];
+        [g_window makeFirstResponder:g_webview];
     });
 }
 */
