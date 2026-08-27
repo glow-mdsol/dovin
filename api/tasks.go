@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/glow-mdsol/dovin/notes"
 	"github.com/glow-mdsol/dovin/scheduler"
 	"github.com/glow-mdsol/dovin/store"
 )
@@ -216,16 +215,12 @@ func (s *Server) handleTaskNotes(w http.ResponseWriter, r *http.Request, id int6
 		writeError(w, 404, "not found")
 		return
 	}
-	name, err := notes.EnsureFile(id, task.Title)
+	note, err := s.store.GetOrCreateNoteForTask(id, task.Title)
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return
 	}
-	if err := s.store.SetNotesPath(id, name); err != nil {
-		writeError(w, 500, err.Error())
-		return
-	}
-	writeJSON(w, 200, map[string]string{"notes_path": name})
+	writeJSON(w, 200, map[string]int64{"note_id": note.ID})
 }
 
 func (s *Server) handleTaskPriority(w http.ResponseWriter, r *http.Request, id int64) {

@@ -35,6 +35,8 @@ func (s *Server) Handler(uiFS http.FileSystem) http.Handler {
 	mux.HandleFunc("/tasks/", s.handleTask)
 	mux.HandleFunc("/recurrences", s.handleRecurrences)
 	mux.HandleFunc("/recurrences/", s.handleRecurrence)
+	mux.HandleFunc("/notes", s.handleNotes)
+	mux.HandleFunc("/notes/", s.handleNote)
 	return mux
 }
 

@@ -10,17 +10,40 @@ package main
 static NSWindow   *g_window   = nil;
 static WKWebView  *g_webview  = nil;
 
-@interface DovinDelegate : NSObject <NSWindowDelegate, WKNavigationDelegate>
+@interface DovinDelegate : NSObject <NSWindowDelegate, WKNavigationDelegate, WKUIDelegate>
 @end
 @implementation DovinDelegate
 - (BOOL)windowShouldClose:(NSWindow *)sender {
     [sender orderOut:nil];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
     return NO;
 }
+- (void)windowDidResignKey:(NSNotification *)notification {
+    [g_window orderOut:nil];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+}
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
-    // Focus the first text input after the page loads so the user can type immediately
     [webView evaluateJavaScript:@"document.querySelector('input[type=text],input:not([type])')?.focus()"
               completionHandler:nil];
+}
+- (void)webView:(WKWebView *)webView
+    runJavaScriptAlertPanelWithMessage:(NSString *)message
+                      initiatedByFrame:(WKFrameInfo *)frame
+                     completionHandler:(void (^)(void))completionHandler {
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:message];
+    [alert runModal];
+    completionHandler();
+}
+- (void)webView:(WKWebView *)webView
+    runJavaScriptConfirmPanelWithMessage:(NSString *)message
+                        initiatedByFrame:(WKFrameInfo *)frame
+                       completionHandler:(void (^)(BOOL))completionHandler {
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:message];
+    [alert addButtonWithTitle:@"OK"];
+    [alert addButtonWithTitle:@"Cancel"];
+    completionHandler([alert runModal] == NSAlertFirstButtonReturn);
 }
 @end
 
@@ -48,6 +71,7 @@ void dovin_show(const char *url) {
                 initWithFrame:[[g_window contentView] bounds]
                 configuration:cfg];
             [g_webview setNavigationDelegate:g_delegate];
+            [g_webview setUIDelegate:g_delegate];
             [g_webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
             [[g_window contentView] addSubview:g_webview];
         }
@@ -55,6 +79,7 @@ void dovin_show(const char *url) {
         NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
         [g_webview loadRequest:req];
         [g_window setLevel:NSFloatingWindowLevel];
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         [NSApp activateIgnoringOtherApps:YES];
         [g_window orderFrontRegardless];
         [g_window makeKeyWindow];

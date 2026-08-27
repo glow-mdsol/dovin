@@ -95,6 +95,15 @@ func (s *Store) SetRecurrenceActive(id int64, active bool) error {
 	return err
 }
 
+func (s *Store) DeleteRecurrence(id int64) error {
+	_, err := s.db.Exec(`UPDATE tasks SET recurrence_id=NULL WHERE recurrence_id=?`, id)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`DELETE FROM recurrences WHERE id=?`, id)
+	return err
+}
+
 func (s *Store) scanRecurrence(row *sql.Row) (*Recurrence, error) {
 	var r Recurrence
 	var nextDue, lastComp sql.NullString

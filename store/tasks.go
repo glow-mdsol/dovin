@@ -21,9 +21,9 @@ type Task struct {
 }
 
 var allowedTransitions = map[string][]string{
-	"todo":        {"in_progress", "blocked", "archived"},
-	"in_progress": {"blocked", "done"},
-	"blocked":     {"in_progress", "todo"},
+	"todo":        {"in_progress", "blocked", "done"},
+	"in_progress": {"blocked", "done", "todo"},
+	"blocked":     {"in_progress", "done"},
 	"done":        {"archived"},
 	"archived":    {},
 }

@@ -10,7 +10,8 @@ import (
 )
 
 type Store struct {
-	db *sql.DB
+	db  *sql.DB
+	dir string // config directory, e.g. ~/.config/dovin
 }
 
 func Open() (*Store, error) {
@@ -24,7 +25,7 @@ func Open() (*Store, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	db.SetMaxOpenConns(1) // SQLite is single-writer
-	s := &Store{db: db}
+	s := &Store{db: db, dir: dir}
 	if err := s.migrate(); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
@@ -64,9 +65,17 @@ func (s *Store) migrate() error {
 			updated_at     DATETIME NOT NULL DEFAULT (datetime('now'))
 		);
 
-		CREATE INDEX IF NOT EXISTS idx_tasks_parent   ON tasks(parent_id);
-		CREATE INDEX IF NOT EXISTS idx_tasks_status   ON tasks(status);
-		CREATE INDEX IF NOT EXISTS idx_tasks_recur    ON tasks(recurrence_id);
+		CREATE TABLE IF NOT EXISTS notes (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			title      TEXT NOT NULL,
+			content    TEXT NOT NULL DEFAULT '',
+			task_id    INTEGER,
+			created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			modified_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(task_id) REFERENCES tasks(id)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_notes_task ON notes(task_id);
 	`)
 	return err
 }

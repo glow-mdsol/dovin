@@ -1,6 +1,40 @@
 package api
 
-import "github.com/glow-mdsol/dovin/store"
+import (
+	"time"
+
+	"github.com/glow-mdsol/dovin/store"
+)
+
+// noteResp is the flat JSON shape returned to the frontend.
+type noteResp struct {
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	TaskID     *int64 `json:"task_id"`
+	CreatedAt  string `json:"created_at"`
+	ModifiedAt string `json:"modified_at"`
+}
+
+func toNoteResp(n *store.Note) noteResp {
+	r := noteResp{
+		ID:         n.ID,
+		Title:      n.Title,
+		Content:    n.Content,
+		TaskID:     n.TaskID,
+		CreatedAt:  n.CreatedAt.Format(time.RFC3339),
+		ModifiedAt: n.ModifiedAt.Format(time.RFC3339),
+	}
+	return r
+}
+
+func toNoteRespSlice(notes []*store.Note) []noteResp {
+	out := make([]noteResp, len(notes))
+	for i, n := range notes {
+		out[i] = toNoteResp(n)
+	}
+	return out
+}
 
 type taskResp struct {
 	ID           int64      `json:"id"`

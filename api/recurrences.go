@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -91,6 +92,12 @@ func (s *Server) handleRecurrences(w http.ResponseWriter, r *http.Request) {
 			writeError(w, 500, err.Error())
 			return
 		}
+		// Create first task immediately; DueRecurrences guards against duplicates
+		// while a todo/in_progress task is pending.
+		_, _ = s.store.CreateTask(rec.Title, rec.Priority,
+			sql.NullInt64{},
+			sql.NullInt64{Valid: true, Int64: rec.ID},
+		)
 		writeJSON(w, 201, toRecurrenceResp(rec))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -109,26 +116,32 @@ func (s *Server) handleRecurrence(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "invalid id")
 		return
 	}
-	if r.Method != http.MethodPost {
+	switch r.Method {
+	case http.MethodDelete:
+		if err := s.store.DeleteRecurrence(id); err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	case http.MethodPost:
+		var body struct {
+			Active bool `json:"active"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeError(w, 400, "invalid JSON")
+			return
+		}
+		if err := s.store.SetRecurrenceActive(id, body.Active); err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		rec, err := s.store.GetRecurrence(id)
+		if err != nil || rec == nil {
+			writeError(w, http.StatusInternalServerError, "could not reload recurrence")
+			return
+		}
+		writeJSON(w, 200, toRecurrenceResp(rec))
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-	// toggle active
-	var body struct {
-		Active bool `json:"active"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, 400, "invalid JSON")
-		return
-	}
-	if err := s.store.SetRecurrenceActive(id, body.Active); err != nil {
-		writeError(w, 500, err.Error())
-		return
-	}
-	rec, err := s.store.GetRecurrence(id)
-	if err != nil || rec == nil {
-		writeError(w, http.StatusInternalServerError, "could not reload recurrence")
-		return
-	}
-	writeJSON(w, 200, toRecurrenceResp(rec))
 }
