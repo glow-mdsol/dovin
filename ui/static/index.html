@@ -8,25 +8,84 @@
 </head>
 <body>
   <div id="header">
-    <h1>Dovin</h1>
+    <div id="tabs">
+      <button id="tab-tasks"     class="tab active" onclick="switchTab('tasks')">Tasks</button>
+      <button id="tab-schedules" class="tab"        onclick="switchTab('schedules')">Schedules</button>
+      <button id="tab-notes"     class="tab"        onclick="switchTab('notes')">Notes</button>
+    </div>
     <button id="archive-toggle" onclick="toggleArchive()">Archive</button>
   </div>
-  <div id="task-list"></div>
-  <div id="footer">
-    <button id="add-trigger" onclick="showAddForm()">+ Add Task</button>
-    <form id="add-form" class="hidden" onsubmit="submitTask(event)">
-      <input id="add-title" type="text" placeholder="Task title…" autocomplete="off" required>
-      <div class="form-row">
-        <select id="add-priority">
-          <option value="1">High</option>
-          <option value="2" selected>Medium</option>
-          <option value="3">Low</option>
-        </select>
-        <input type="text" id="add-schedule" placeholder="e.g. 'every monday at 9am' or '0 9 * * 1'" style="flex:1">
-        <button type="submit" class="btn-primary">Add</button>
-      </div>
-    </form>
+
+  <!-- ═══════════ TASKS VIEW ═══════════ -->
+  <div id="tasks-view">
+    <div id="task-list"></div>
+    <div id="footer">
+      <button id="add-trigger" onclick="showAddForm()">+ Add Task</button>
+      <form id="add-form" class="hidden" onsubmit="submitTask(event)">
+        <input id="add-title" type="text" placeholder="Task title…" autocomplete="off" required>
+        <div class="form-row">
+          <select id="add-priority">
+            <option value="1">High</option>
+            <option value="2" selected>Medium</option>
+            <option value="3">Low</option>
+          </select>
+          <input type="text" id="add-schedule" placeholder="e.g. 'every monday at 9am'" style="flex:1">
+          <button type="submit" class="btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
   </div>
+
+  <!-- ═══════════ SCHEDULES VIEW ═══════════ -->
+  <div id="schedules-view" class="hidden">
+    <div id="schedule-list"></div>
+  </div>
+
+  <!-- ═══════════ NOTES VIEW ═══════════ -->
+  <div id="notes-view" class="hidden">
+
+    <!-- List panel (shown when no note is open) -->
+    <div id="notes-list-panel">
+      <div id="notes-list"></div>
+      <div id="add-note-form" style="padding:10px 14px;border-top:1px solid #2c2c2e;display:flex;gap:6px;align-items:center;">
+        <input id="add-note-title" type="text" placeholder="New note title…" autocomplete="off"
+               style="flex:1;background:#2c2c2e;color:#f2f2f7;border:none;border-radius:6px;padding:7px 10px;font-size:13px;">
+        <button onclick="addNote()" class="btn-primary">Add</button>
+      </div>
+    </div>
+
+    <!-- Editor panel (shown when a note is open) -->
+    <div id="note-editor-container" class="hidden">
+
+      <!-- Toolbar -->
+      <div id="note-toolbar">
+        <button onclick="closeEditor()" class="btn-sm">← Back</button>
+        <span id="note-title-display" style="flex:1;font-size:13px;color:#f2f2f2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button id="save-note-btn" onclick="saveNote()" class="btn-primary" style="font-size:12px;padding:4px 12px;">Save</button>
+        <button onclick="deleteCurrentNote()" class="btn-sm" style="font-size:12px;padding:4px 10px;color:#ff453a;">Delete</button>
+      </div>
+
+      <!-- Shortcuts bar -->
+      <div id="note-shortcuts-panel">
+        <div id="shortcut-grid" class="shortcut-grid"></div>
+      </div>
+
+      <!-- Editor + Preview split -->
+      <div id="note-editor-body">
+        <div class="editor-pane">
+          <textarea id="note-editor-text" class="editor-textarea" spellcheck="false"></textarea>
+        </div>
+        <div class="preview-pane">
+          <div id="note-preview-content" class="preview-content markdown-preview"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/minified/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markdown.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
