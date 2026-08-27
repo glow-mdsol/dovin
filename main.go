@@ -56,6 +56,7 @@ func main() {
 
 		mOpen := systray.AddMenuItem("Open", "Open Dovin")
 		mAdd := systray.AddMenuItem("Add Task…", "Add a new task")
+		mAddNote := systray.AddMenuItem("Add Note…", "Add a new note")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit Dovin")
 
@@ -67,6 +68,9 @@ func main() {
 					updateBadge(s)
 				case <-mAdd.ClickedCh:
 					openWebview(port, "#add")
+					updateBadge(s)
+				case <-mAddNote.ClickedCh:
+					openWebview(port, "#notes")
 					updateBadge(s)
 				case <-mQuit.ClickedCh:
 					close(done)
